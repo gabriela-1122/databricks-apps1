@@ -39,17 +39,21 @@ with st.sidebar:
 
 # ── Page routing ──────────────────────────────────────────────────────────────
 if page == "🏠 Overview":
-    import overview as _mod
+    print("Hello")
+    #import overview as _mod
 elif page == "👥 Customers — Market Segment":
-    import cust_market_segment as _mod
+    #import cust_market_segment as _mod
+    print("Hello")
 elif page == "👥 Customers — Customer Groups":
     import cust_customer_group as _mod
 elif page == "👥 Customers — Customer Type":
-    import cust_customer_type as _mod
+    #import cust_customer_type as _mod
+    print("Hello")
 elif page == "📦 Products — Category Mapping":
     import prod_category_mapping as _mod
 elif page == "📅 Change Tracking":
-    import change_tracking as _mod
+    print("Hello")
+    #import change_tracking as _mod
 else:
     _mod = None
 
