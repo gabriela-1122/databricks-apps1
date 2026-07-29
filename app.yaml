@@ -6,10 +6,10 @@ command: [
 
 env:
   - name: "dbr-host"
-    valueFrom: "dq-app-secrets/dbr-host"
+    valueFrom: "{{dq-app-secrets/dbr-host}}"
   - name: "sql-warehouse"
-    valueFrom: "dq-app-secrets/sql-warehouse"
+    valueFrom: "{{dq-app-secrets/sql-warehouse}}"
   - name: "DATABRICKS_TOKEN"
-    valueFrom: "dq-app-secrets/dbr-token"
+    valueFrom: "{{dq-app-secrets/dbr-token}}"
   - name: "claude-api"
-    valueFrom: "dq-app-secrets/claude-api"
+    valueFrom: "{{dq-app-secrets/claude-api}}"
