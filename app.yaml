@@ -9,7 +9,7 @@ env:
     valueFrom: "{{dbr-host}}"
 
   - name: sql-warehouse
-    valueFrom: "{{sql-warehouse}}"
+    valueFrom: "sql-warehouse"
 
   - name: dbr-token
     valueFrom: "{{dbr-token}}"
