@@ -19,16 +19,6 @@ ANTHROPIC_API_KEY = dbutils.secrets.get(
     key="ANTHROPIC_API_KEY"
 )
 
-HTTP_PATH = dbutils.secrets.get(
-    scope="dq-app-secrets",
-    key="HTTP_PATH"
-)
-
-DATABRICKS_TOKEN = dbutils.secrets.get(
-    scope="dq-app-secrets",
-    key="DATABRICKS_TOKEN"
-)
-
 # Base filter for fact table queries
 FSL_CUSTOMER_BASE = """
     VERSION_ID = 'AC'
