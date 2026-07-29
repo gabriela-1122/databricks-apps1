@@ -1,23 +1,12 @@
 """db.py - Databricks SQL connection helpers"""
 from databricks import sql
-
+import os
 import pandas as pd
 
-DATABRICKS_HOST = dbutils.secrets.get(
-    scope="dq-app-secrets",
-    key="DATABRICKS_HOST"
-)
 
-HTTP_PATH = dbutils.secrets.get(
-    scope="dq-app-secrets",
-    key="HTTP_PATH"
-)
-
-DATABRICKS_TOKEN = dbutils.secrets.get(
-    scope="dq-app-secrets",
-    key="DATABRICKS_TOKEN"
-)
-
+DATABRICKS_HOST = os.getenv("DATABRICKS_HOST")
+HTTP_PATH = os.getenv("HTTP_PATH")
+DATABRICKS_TOKEN = os.getenv("DATABRICKS_TOKEN")
 
 def get_connection():
     return sql.connect(

@@ -3,4 +3,28 @@ command: [
   "run",
   "app.py"]
 
+env:
+  DATABRICKS_HOST:
+    valueFrom:
+      secretKeyRef:
+        scope: dq-app-secrets
+        key: DATABRICKS_HOST
+
+  DATABRICKS_TOKEN:
+    valueFrom:
+      secretKeyRef:
+        scope: dq-app-secrets
+        key: DATABRICKS_TOKEN
+
+  HTTP_PATH:
+    valueFrom:
+      secretKeyRef:
+        scope: dq-app-secrets
+        key: HTTP_PATH
+
+  ANTHROPIC_API_KEY:
+    valueFrom:
+      secretKeyRef:
+        scope: dq-app-secrets
+        key: ANTHROPIC_API_KEY
 

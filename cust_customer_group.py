@@ -1,5 +1,5 @@
 """cust_customer_group.py - Customer Groups DQ + AI suggestions"""
-import json
+import json,os
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -7,10 +7,7 @@ from db import run_query
 from customer_exceptions import ms_exclusion_clause
 from ui import gauge_chart, section_header, info_box, metric_card, mapping_rate_status
 
-ANTHROPIC_API_KEY = dbutils.secrets.get(
-    scope="dq-app-secrets",
-    key="ANTHROPIC_API_KEY"
-)
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 # Base filter for fact table queries
 FSL_CUSTOMER_BASE = """
