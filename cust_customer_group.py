@@ -7,7 +7,7 @@ from db import run_query
 from customer_exceptions import ms_exclusion_clause
 from ui import gauge_chart, section_header, info_box, metric_card, mapping_rate_status
 
-ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # Base filter for fact table queries
 FSL_CUSTOMER_BASE = """
@@ -34,6 +34,7 @@ IN_SCOPE = """
 
 
 
+
 @st.cache_data(ttl=3600)
 def load_all_groups():
     df = run_query(f"""
@@ -50,20 +51,20 @@ def load_all_groups():
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_groups_with_sources():
-    """Returns dict: group_name → comma-separated list of source systems."""
     df = run_query(f"""
-        SELECT sc.CUSTOMER_GROUP_DESC, GROUP_CONCAT(DISTINCT sc.SOURCE ORDER BY sc.SOURCE) AS sources
-        FROM dev_datalake.silver.d_sales_customer sc
-        WHERE sc.TABLE_SOURCE NOT IN ('BUDGET','HISTORICAL')
-          AND sc.INTERCO <> 'Interco Only'
-          AND sc.CUSTOMER_GROUP_DESC IS NOT NULL
-          AND TRIM(sc.CUSTOMER_GROUP_DESC) <> ''
-          {IN_SCOPE}
-        GROUP BY 1
-        ORDER BY 1""")
-    # Databricks uses collect_list/concat_ws — fallback if GROUP_CONCAT not supported
-    if "SOURCES" not in df.columns and "sources" not in df.columns:
-        return {g: "" for g in df["CUSTOMER_GROUP_DESC"].tolist()}
+    SELECT 
+        sc.CUSTOMER_GROUP_DESC,
+        concat_ws(',', collect_set(sc.SOURCE)) AS sources
+    FROM dev_datalake.silver.d_sales_customer sc
+    WHERE sc.TABLE_SOURCE NOT IN ('BUDGET','HISTORICAL')
+      AND sc.INTERCO <> 'Interco Only'
+      AND sc.CUSTOMER_GROUP_DESC IS NOT NULL
+      AND TRIM(sc.CUSTOMER_GROUP_DESC) <> ''
+      {IN_SCOPE}
+    GROUP BY sc.CUSTOMER_GROUP_DESC
+    ORDER BY 1
+    """)
+    
     col = "SOURCES" if "SOURCES" in df.columns else "sources"
     return dict(zip(df["CUSTOMER_GROUP_DESC"], df[col]))
 

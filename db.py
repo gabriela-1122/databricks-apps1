@@ -3,9 +3,10 @@ import os
 from databricks import sql
 import pandas as pd
 
-DATABRICKS_HOST = os.environ["DATABRICKS_HOST"]
+DATABRICKS_HOST = os.environ["DATABRICKS_HOST"].replace("https://", "").rstrip("/")
 HTTP_PATH       = os.environ["HTTP_PATH"]
 DATABRICKS_TOKEN = os.environ["DATABRICKS_TOKEN"]
+
 
 def get_connection():
     return sql.connect(
@@ -29,3 +30,8 @@ def run_write(query: str) -> None:
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(query)
+
+
+
+print("LOADED DB.PY FROM:", __file__)
+print("TOKEN PREFIX:", os.environ["DATABRICKS_TOKEN"])

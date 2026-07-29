@@ -5,6 +5,7 @@ Started via: streamlit run app.py (defined in app.yaml)
 """
 import streamlit as st
 
+
 st.set_page_config(
     page_title="Data Quality App",
     page_icon="🔍",
@@ -45,7 +46,12 @@ elif page == "👥 Customers — Market Segment":
     #import cust_market_segment as _mod
     print("Hello")
 elif page == "👥 Customers — Customer Groups":
-    import cust_customer_group as _mod
+    try:
+        import cust_customer_group as _mod
+    except Exception as e:
+        st.error(f"Customer Group page failed: {e}")
+        st.exception(e)
+        _mod = None
 elif page == "👥 Customers — Customer Type":
     #import cust_customer_type as _mod
     print("Hello")
