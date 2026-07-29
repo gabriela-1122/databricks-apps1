@@ -7,7 +7,6 @@ from db import run_query
 from customer_exceptions import ms_exclusion_clause
 from ui import gauge_chart, section_header, info_box, metric_card, mapping_rate_status
 
-st.write("Customer Group page opened")
 
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
@@ -35,7 +34,35 @@ IN_SCOPE = """
     )
 """
 
+st.write("before source query")
+col1, _ = st.columns([2, 4])
 
+col1, _ = st.columns([2, 4])
+
+with col1:
+    st.write("before source query")
+    try:
+        src_df = run_query(f"""
+            SELECT DISTINCT sc.SOURCE
+            FROM dev_datalake.silver.d_sales_customer sc
+            WHERE sc.TABLE_SOURCE NOT IN ('BUDGET','HISTORICAL')
+            AND sc.INTERCO <> 'Interco Only'
+            {IN_SCOPE}
+            ORDER BY 1
+        """)
+
+        st.write("source query finished")
+
+        sel_src = st.multiselect(
+            "Filter by Source",
+            src_df["SOURCE"].tolist(),
+            placeholder="All sources",
+            key="cg_src"
+        )
+
+    except Exception as e:
+        st.error(f"Source query failed: {e}")
+        sel_src = []
 
 
 @st.cache_data(ttl=3600)
