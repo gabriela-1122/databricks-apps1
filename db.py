@@ -6,7 +6,7 @@ import pandas as pd
 
 def get_connection():
     return sql.connect(
-        server_hostname=os.environ["dbr-host"].replace("https://", "").rstrip("/"),
+        server_hostname=os.environ["DATABRICKS_HOST"].replace("https://", "").rstrip("/"),
         http_path=os.environ["sql-warehouse"],
         access_token=os.environ["dbr-token"]
     )
