@@ -13,3 +13,6 @@ env:
 
   - name: ANTHROPIC_API_KEY
     value: "{{claude-api}}"
+
+  - name: DATABRICKS_TOKEN
+    value: "{{dbr-token}}"

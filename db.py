@@ -3,11 +3,12 @@ import os
 import pandas as pd
 
 
+
 def get_connection():
     return sql.connect(
-        server_hostname=os.environ["DATABRICKS_HOST"].replace("https://", ""),
+        server_hostname=os.environ["DATABRICKS_HOST"].replace("https://", "").rstrip("/"),
         http_path=os.environ["HTTP_PATH"],
-        auth_type="oauth"
+        access_token=os.environ["DATABRICKS_TOKEN"]
     )
 
 
