@@ -6,10 +6,10 @@ command: [
 
 env:
   - name: "DATABRICKS_HOST"
-    valueFrom: "{{dbr-host}}"
+    value: "{{dbr-host}}"
   - name: "HTTP_PATH"
-    valueFrom: "{{sql-warehouse}}"
+    value: "{{sql-warehouse}}"
   - name: "DATABRICKS_TOKEN"
-    valueFrom: "{{dbr-token}}"
+    value: "{{dbr-token}}"
   - name: "ANTHROPIC_API_KEY"
-    valueFrom: "{{claude-api}}"
+    value: "{{claude-api}}"
