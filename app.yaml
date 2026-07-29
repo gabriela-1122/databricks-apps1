@@ -6,13 +6,13 @@ command: [
 
 env:
   - name: dbr-host
-    valueFrom: "{{dbr-host}}"
+    valueFrom: "dbr-host"
 
   - name: sql-warehouse
     valueFrom: "sql-warehouse"
 
   - name: dbr-token
-    valueFrom: "{{dbr-token}}"
+    valueFrom: "dbr-token"
 
   - name: claude-api
-    value: "{{claude-api}}"
+    value: "claude-api"
