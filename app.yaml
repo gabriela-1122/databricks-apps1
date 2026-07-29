@@ -12,4 +12,4 @@ env:
     valueFrom: "dbr-token"
 
   - name: claude-api
-    value: "claude-api"
+    valueFrom: "claude-api"
