@@ -6,6 +6,14 @@ Started via: streamlit run app.py (defined in app.yaml)
 import streamlit as st
 
 
+import os
+import streamlit as st
+
+st.write("Environment variables:")
+st.write(sorted(os.environ.keys()))
+
+
+
 st.set_page_config(
     page_title="Data Quality App",
     page_icon="🔍",
