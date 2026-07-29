@@ -1,13 +1,7 @@
 """db.py - Databricks SQL connection helpers"""
 from databricks import sql
 
-from pyspark.dbutils import DBUtils
-from pyspark.sql import SparkSession
-
 import pandas as pd
-
-spark = SparkSession.builder.getOrCreate()
-dbutils = DBUtils(spark)
 
 DATABRICKS_HOST = dbutils.secrets.get(
     scope="dq-app-secrets",
