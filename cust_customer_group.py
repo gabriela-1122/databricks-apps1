@@ -1,5 +1,5 @@
 """cust_customer_group.py - Customer Groups DQ + AI suggestions"""
-import os, json
+import json
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -7,7 +7,27 @@ from db import run_query
 from customer_exceptions import ms_exclusion_clause
 from ui import gauge_chart, section_header, info_box, metric_card, mapping_rate_status
 
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+from pyspark.dbutils import DBUtils
+from pyspark.sql import SparkSession
+
+
+spark = SparkSession.builder.getOrCreate()
+dbutils = DBUtils(spark)
+
+ANTHROPIC_API_KEY = dbutils.secrets.get(
+    scope="dq-app-secrets",
+    key="ANTHROPIC_API_KEY"
+)
+
+HTTP_PATH = dbutils.secrets.get(
+    scope="dq-app-secrets",
+    key="HTTP_PATH"
+)
+
+DATABRICKS_TOKEN = dbutils.secrets.get(
+    scope="dq-app-secrets",
+    key="DATABRICKS_TOKEN"
+)
 
 # Base filter for fact table queries
 FSL_CUSTOMER_BASE = """

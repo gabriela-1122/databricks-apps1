@@ -1,11 +1,28 @@
 """db.py - Databricks SQL connection helpers"""
-import os
 from databricks import sql
+
+from pyspark.dbutils import DBUtils
+from pyspark.sql import SparkSession
+
 import pandas as pd
 
-DATABRICKS_HOST = os.environ["DATABRICKS_HOST"].replace("https://", "").rstrip("/")
-HTTP_PATH       = os.environ["HTTP_PATH"]
-DATABRICKS_TOKEN = os.environ["DATABRICKS_TOKEN"]
+spark = SparkSession.builder.getOrCreate()
+dbutils = DBUtils(spark)
+
+DATABRICKS_HOST = dbutils.secrets.get(
+    scope="dq-app-secrets",
+    key="DATABRICKS_HOST"
+)
+
+HTTP_PATH = dbutils.secrets.get(
+    scope="dq-app-secrets",
+    key="HTTP_PATH"
+)
+
+DATABRICKS_TOKEN = dbutils.secrets.get(
+    scope="dq-app-secrets",
+    key="DATABRICKS_TOKEN"
+)
 
 
 def get_connection():
