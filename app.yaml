@@ -6,13 +6,13 @@ command: [
 
 env:
   - name: DATABRICKS_HOST
-    value: "{{dbr-host}}"
+    value: "{{secrets/dq-app-secrets/DATABRICKS_HOST}}"
 
   - name: HTTP_PATH
-    value: "{{sql-warehouse}}"
-
-  - name: ANTHROPIC_API_KEY
-    value: "{{claude-api}}"
+    value: "{{secrets/dq-app-secrets/HTTP_PATH}}"
 
   - name: DATABRICKS_TOKEN
-    value: "{{dbr-token}}"
+    value: "{{secrets/dq-app-secrets/DATABRICKS_TOKEN}}"
+
+  - name: ANTHROPIC_API_KEY
+    value: "{{secrets/dq-app-secrets/ANTHROPIC_API_KEY}}"
