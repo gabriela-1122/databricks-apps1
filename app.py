@@ -9,8 +9,6 @@ import streamlit as st
 import os
 import streamlit as st
 
-st.write("Environment variables:")
-st.write(sorted(os.environ.keys()))
 
 
 
