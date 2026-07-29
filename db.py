@@ -1,36 +1,24 @@
 """db.py - Databricks SQL connection helpers"""
+
 from databricks import sql
+from databricks.sdk import WorkspaceClient
 import os
 import pandas as pd
 
-DATABRICKS_HOST = os.getenv("DATABRICKS_HOST")
-HTTP_PATH = os.getenv("SQL_WAREHOUSE_ID")
-DATABRICKS_TOKEN = os.getenv("DATABRICKS_TOKEN")
-
-# Fail fast instead of hanging forever if the warehouse is
-# slow to respond / unreachable. Tune up if your warehouse
-# genuinely needs longer to cold-start.
-CONNECT_TIMEOUT_SECONDS = 30
-
 
 def get_connection():
-    if not DATABRICKS_HOST or not HTTP_PATH or not DATABRICKS_TOKEN:
-        missing = [
-            name for name, val in [
-                ("DATABRICKS_HOST", DATABRICKS_HOST),
-                ("SQL_WAREHOUSE_ID", HTTP_PATH),
-                ("DATABRICKS_TOKEN", DATABRICKS_TOKEN),
-            ] if not val
-        ]
-        raise RuntimeError(
-            f"Missing required env var(s): {', '.join(missing)}. "
-            "Check app.yaml secret mappings."
-        )
+    """
+    Create a Databricks SQL connection using the App service principal identity.
+    """
+
+    w = WorkspaceClient()
+
+    warehouse_id = os.environ["SQL_WAREHOUSE_ID"]
+
     return sql.connect(
-        server_hostname=DATABRICKS_HOST.replace("https://", ""),
-        http_path=HTTP_PATH,
-        access_token=DATABRICKS_TOKEN,
-        _socket_timeout=CONNECT_TIMEOUT_SECONDS,
+        server_hostname=w.config.host.replace("https://", ""),
+        http_path=f"/sql/1.0/warehouses/{warehouse_id}",
+        auth_type="databricks-oauth"
     )
 
 
@@ -44,7 +32,10 @@ def run_query(query: str) -> pd.DataFrame:
 
 
 def run_write(query: str) -> None:
-    """Execute a write statement (INSERT, UPDATE, DELETE, MERGE) with no return value."""
+    """
+    Execute a write statement (INSERT, UPDATE, DELETE, MERGE)
+    with no return value.
+    """
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(query)
