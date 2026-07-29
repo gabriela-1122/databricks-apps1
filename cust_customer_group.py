@@ -7,13 +7,6 @@ from db import run_query
 from customer_exceptions import ms_exclusion_clause
 from ui import gauge_chart, section_header, info_box, metric_card, mapping_rate_status
 
-from pyspark.dbutils import DBUtils
-from pyspark.sql import SparkSession
-
-
-spark = SparkSession.builder.getOrCreate()
-dbutils = DBUtils(spark)
-
 ANTHROPIC_API_KEY = dbutils.secrets.get(
     scope="dq-app-secrets",
     key="ANTHROPIC_API_KEY"
