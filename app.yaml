@@ -15,4 +15,4 @@ env:
     valueFrom: "{{secrets/dq-app-secrets/DATABRICKS_TOKEN}}"
 
   - name: ANTHROPIC_API_KEY
-    valueFrom: "{{secrets/dq-app-secrets/ANTHROPIC_API_KEY}}"
+    valueFrom: "{{claude-api}}"
