@@ -5,11 +5,7 @@ command: [
 ]
 
 env:
-  - name: "DATABRICKS_HOST"
-    value: "{{dbr-host}}"
   - name: "SQL_WAREHOUSE_ID"
     value: "{{sql-warehouse}}"
-  - name: "DATABRICKS_TOKEN"
-    value: "{{dbr-token}}"
   - name: "ANTHROPIC_API_KEY"
     value: "{{claude-api}}"
