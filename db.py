@@ -3,9 +3,9 @@ from databricks import sql
 import os
 import pandas as pd
 
-DATABRICKS_HOST = os.getenv("dbr-host")
-HTTP_PATH = os.getenv("sql-warehouse")
-DATABRICKS_TOKEN = os.getenv("dbr-token")
+DATABRICKS_HOST = os.getenv("DATABRICKS_HOST")
+HTTP_PATH = os.getenv("HTTP_PATH")
+DATABRICKS_TOKEN = os.getenv("DATABRICKS_TOKEN")
 
 # Fail fast instead of hanging forever if the warehouse is
 # slow to respond / unreachable. Tune up if your warehouse
