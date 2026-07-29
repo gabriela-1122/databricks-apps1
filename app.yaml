@@ -5,14 +5,14 @@ command: [
 ]
 
 env:
-  - name: DATABRICKS_HOST
+  - name: dbr-host
     valueFrom: "{{dbr-host}}"
 
-  - name: HTTP_PATH
+  - name: sql-warehouse
     valueFrom: "{{sql-warehouse}}"
 
-  - name: DATABRICKS_TOKEN
+  - name: dbr-token
     valueFrom: "{{dbr-token}"
 
-  - name: ANTHROPIC_API_KEY
+  - name: claude-api
     value: "{{claude-api}}"
