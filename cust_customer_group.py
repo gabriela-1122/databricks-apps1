@@ -34,37 +34,6 @@ IN_SCOPE = """
     )
 """
 
-st.write("before source query")
-col1, _ = st.columns([2, 4])
-
-col1, _ = st.columns([2, 4])
-
-with col1:
-    st.write("before source query")
-    try:
-        src_df = run_query(f"""
-            SELECT DISTINCT sc.SOURCE
-            FROM dev_datalake.silver.d_sales_customer sc
-            WHERE sc.TABLE_SOURCE NOT IN ('BUDGET','HISTORICAL')
-            AND sc.INTERCO <> 'Interco Only'
-            {IN_SCOPE}
-            ORDER BY 1
-        """)
-
-        st.write("source query finished")
-
-        sel_src = st.multiselect(
-            "Filter by Source",
-            src_df["SOURCE"].tolist(),
-            placeholder="All sources",
-            key="cg_src"
-        )
-
-    except Exception as e:
-        st.error(f"Source query failed: {e}")
-        sel_src = []
-
-
 @st.cache_data(ttl=3600)
 def load_all_groups():
     df = run_query(f"""

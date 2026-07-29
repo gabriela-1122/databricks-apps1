@@ -1,17 +1,5 @@
-command:
-  - "streamlit"
-  - "run"
-  - "app.py"
-
-env:
-  - name: DATABRICKS_HOST
-    value: "{{secrets/dq-app-secrets/DATABRICKS_HOST}}"
-
-  - name: DATABRICKS_TOKEN
-    value: "{{secrets/dq-app-secrets/DATABRICKS_TOKEN}}"
-
-  - name: HTTP_PATH
-    value: "{{secrets/dq-app-secrets/HTTP_PATH}}"
-
-  - name: ANTHROPIC_API_KEY
-    value: "{{secrets/dq-app-secrets/ANTHROPIC_API_KEY}}"
+command: [
+  "streamlit", 
+  "run",
+  "app.py"
+]
