@@ -8,7 +8,7 @@ from customer_exceptions import ms_exclusion_clause
 from ui import gauge_chart, section_header, info_box, metric_card, mapping_rate_status
 
 
-ANTHROPIC_API_KEY = os.environ["claude-api"]
+ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 
 # Base filter for fact table queries
 FSL_CUSTOMER_BASE = """
