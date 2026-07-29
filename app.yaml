@@ -5,9 +5,6 @@ command: [
 ]
 
 env:
-  - name: dbr-host
-    valueFrom: "dbr-host"
-
   - name: sql-warehouse
     valueFrom: "sql-warehouse"
 
