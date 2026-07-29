@@ -5,6 +5,9 @@ command: [
 ]
 
 env:
+  - name: dbr-host
+    valueFrom: "dbr-host"
+
   - name: sql-warehouse
     valueFrom: "sql-warehouse"
 
@@ -12,4 +15,4 @@ env:
     valueFrom: "dbr-token"
 
   - name: claude-api
-    valueFrom: "claude-api"
+    value: "claude-api"
