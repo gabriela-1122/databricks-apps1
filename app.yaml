@@ -12,7 +12,7 @@ env:
     valueFrom: "{{sql-warehouse}}"
 
   - name: dbr-token
-    valueFrom: "{{dbr-token}"
+    valueFrom: "{{dbr-token}}"
 
   - name: claude-api
     value: "{{claude-api}}"
