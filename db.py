@@ -4,7 +4,7 @@ import os
 import pandas as pd
 
 DATABRICKS_HOST = os.getenv("DATABRICKS_HOST")
-HTTP_PATH = os.getenv("HTTP_PATH")
+HTTP_PATH = os.getenv("SQL_WAREHOUSE_ID")
 DATABRICKS_TOKEN = os.getenv("DATABRICKS_TOKEN")
 
 # Fail fast instead of hanging forever if the warehouse is
@@ -18,7 +18,7 @@ def get_connection():
         missing = [
             name for name, val in [
                 ("DATABRICKS_HOST", DATABRICKS_HOST),
-                ("HTTP_PATH", HTTP_PATH),
+                ("SQL_WAREHOUSE_ID", HTTP_PATH),
                 ("DATABRICKS_TOKEN", DATABRICKS_TOKEN),
             ] if not val
         ]
