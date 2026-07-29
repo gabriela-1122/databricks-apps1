@@ -1,12 +1,11 @@
 """cust_customer_group.py - Customer Groups DQ + AI suggestions"""
-import json,os
+import json, os
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 from db import run_query
 from customer_exceptions import ms_exclusion_clause
 from ui import gauge_chart, section_header, info_box, metric_card, mapping_rate_status
-
 
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
@@ -34,6 +33,16 @@ IN_SCOPE = """
     )
 """
 
+
+# ── Cached query layer ────────────────────────────────────────────────────
+# Every one of these is keyed on its actual filter arguments, so a widget
+# interaction elsewhere on the page (a button click, a selectbox change)
+# triggers a Streamlit rerun WITHOUT re-hitting the SQL warehouse for data
+# that hasn't changed. Previously every rerun re-ran all ~6 queries,
+# including the expensive IN_SCOPE correlated subquery, on every single
+# interaction — that repeated warehouse round-trip is what read as the
+# page being "stuck".
+
 @st.cache_data(ttl=3600)
 def load_all_groups():
     df = run_query(f"""
@@ -51,7 +60,7 @@ def load_all_groups():
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_groups_with_sources():
     df = run_query(f"""
-    SELECT 
+    SELECT
         sc.CUSTOMER_GROUP_DESC,
         concat_ws(',', collect_set(sc.SOURCE)) AS sources
     FROM dev_datalake.silver.d_sales_customer sc
@@ -63,9 +72,73 @@ def load_groups_with_sources():
     GROUP BY sc.CUSTOMER_GROUP_DESC
     ORDER BY 1
     """)
-    
     col = "SOURCES" if "SOURCES" in df.columns else "sources"
     return dict(zip(df["CUSTOMER_GROUP_DESC"], df[col]))
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def load_sources():
+    return run_query(f"""
+        SELECT DISTINCT sc.SOURCE
+        FROM dev_datalake.silver.d_sales_customer sc
+        WHERE sc.TABLE_SOURCE NOT IN ('BUDGET','HISTORICAL')
+          AND sc.INTERCO <> 'Interco Only'
+          {IN_SCOPE}
+        ORDER BY 1""")
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def load_kpi(src_clause: str, yr_clause_fsl: str):
+    kpi = run_query(f"""
+        SELECT
+            SUM(ABS(fsl.SALES_AMOUNT_GROUP))                                   AS total_amt,
+            SUM(CASE WHEN sc.CUSTOMER_GROUP_DESC IS NOT NULL
+                     AND TRIM(sc.CUSTOMER_GROUP_DESC) <> ''
+                     THEN ABS(fsl.SALES_AMOUNT_GROUP) ELSE 0 END)              AS mapped_amt,
+            COUNT(DISTINCT fsl.CUSTOMER_BILL_TO_ID)                       AS total_cust,
+            COUNT(DISTINCT CASE WHEN sc.CUSTOMER_GROUP_DESC IS NOT NULL
+                     AND TRIM(sc.CUSTOMER_GROUP_DESC) <> ''
+                     THEN fsl.CUSTOMER_BILL_TO_ID END)                    AS mapped_cust
+        FROM dev_datalake.gold.f_sales_ledger_combined_full fsl
+        LEFT JOIN dev_datalake.silver.d_sales_customer sc
+          ON fsl.CUSTOMER_BILL_TO_UID = sc.CUSTOMER_UID
+        WHERE {FSL_CUSTOMER_BASE}
+          {src_clause} {yr_clause_fsl}""")
+    kpi.columns = [c.upper() for c in kpi.columns]
+    return kpi
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def load_by_source(src_clause: str):
+    return run_query(f"""
+        SELECT sc.SOURCE,
+            COUNT(*) AS total,
+            COUNT(CASE WHEN sc.CUSTOMER_GROUP_DESC IS NOT NULL
+                       AND TRIM(sc.CUSTOMER_GROUP_DESC) <> '' THEN 1 END) AS mapped,
+            ROUND(COUNT(CASE WHEN sc.CUSTOMER_GROUP_DESC IS NOT NULL
+                       AND TRIM(sc.CUSTOMER_GROUP_DESC) <> '' THEN 1 END)
+                / NULLIF(COUNT(*), 0) * 100, 1) AS pct
+        FROM dev_datalake.silver.d_sales_customer sc
+        WHERE sc.TABLE_SOURCE NOT IN ('BUDGET','HISTORICAL')
+          AND sc.INTERCO <> 'Interco Only'
+          {IN_SCOPE}
+          {src_clause}
+        GROUP BY 1 ORDER BY 4 ASC""")
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def load_unassigned(extra_src: str, ms_clause: str, columns: str, limit: int):
+    return run_query(f"""
+        SELECT {columns}
+        FROM dev_datalake.silver.d_sales_customer sc
+        WHERE sc.TABLE_SOURCE NOT IN ('BUDGET','HISTORICAL')
+          AND sc.INTERCO <> 'Interco Only'
+          AND (sc.CUSTOMER_GROUP_DESC IS NULL OR TRIM(sc.CUSTOMER_GROUP_DESC) = '')
+          {IN_SCOPE}
+          {extra_src}
+          {ms_clause}
+        ORDER BY sc.SOURCE, sc.CUSTOMER_DESC
+        LIMIT {limit}""")
 
 
 def find_lookalikes_cached(threshold=0.85):
@@ -148,35 +221,29 @@ Respond ONLY in JSON (no markdown):
 def _parse_batch_response(text: str, customers: list) -> list:
     """Parse Claude JSON response, recovering partial results if the output was truncated."""
     import re
-    # Try clean parse first
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
-    # Salvage: extract all complete {...} objects from the array before truncation
     objects = []
     for m in re.finditer(r'[{][^{}]+[}]', text, re.DOTALL):
         try:
             obj = json.loads(m.group())
-            # Only keep objects that have the expected keys
             if "recommended_group" in obj and "confidence" in obj:
                 objects.append(obj)
         except json.JSONDecodeError:
             continue
     if objects:
         return objects
-    # Nothing salvageable — return empty stubs so the batch doesn't crash the whole run
     return [{"index": i+1, "recommended_group": "", "is_existing": False,
              "justification": "parse error", "confidence": 0}
             for i in range(len(customers))]
-
 
 
 def ai_suggest_batch(customers: list, existing_groups: list) -> list:
     """One API call for a batch of customers (up to BATCH_SIZE).
     customers: list of dicts with keys customer_uid, customer_desc, source.
     Returns list of result dicts enriched with customer_uid/desc/source."""
-    # Truncate inputs to 60 chars so the response always fits within max_tokens=4096
     groups_list   = "\n".join(f"- {g[:60]}" for g in sorted(set(existing_groups)))
     customers_txt = "\n".join(
         f"{i+1}. {c['customer_desc'][:60]}" for i, c in enumerate(customers)
@@ -210,7 +277,6 @@ Respond ONLY with a JSON array (no markdown, no preamble), one object per custom
     return results
 
 
-
 YEAR_OPTIONS = ["All years", 2023, 2024, 2025, 2026]
 
 def render():
@@ -224,16 +290,12 @@ def render():
     col1, _ = st.columns([2, 4])
     with col1:
         try:
-            src_df = run_query(f"""
-                SELECT DISTINCT sc.SOURCE
-                FROM dev_datalake.silver.d_sales_customer sc
-                WHERE sc.TABLE_SOURCE NOT IN ('BUDGET','HISTORICAL')
-                  AND sc.INTERCO <> 'Interco Only'
-                  {IN_SCOPE}
-                ORDER BY 1""")
+            with st.spinner("Loading sources…"):
+                src_df = load_sources()
             sel_src = st.multiselect("Filter by Source", src_df["SOURCE"].tolist(),
                                      placeholder="All sources", key="cg_src")
-        except Exception:
+        except Exception as e:
+            st.error(f"Could not load sources: {e}")
             sel_src = []
 
     src_clause     = ("AND sc.SOURCE IN (" + ",".join(f"'{s}'" for s in sel_src) + ")") if sel_src else ""
@@ -241,7 +303,6 @@ def render():
     yr_clause_fsl  = f"AND fsl.ACCOUNTING_YEAR = {sel_yr}" if sel_yr != "All years" else ""
 
     src_clause_chg = ("AND SOURCE IN ("    + ",".join(f"'{s}'" for s in sel_src) + ")") if sel_src else ""
-    # ── Plain-English filter summary ──────────────────────────────────────────
     _active_filters = ["Source: **" + (", ".join(sel_src) if sel_src else "All") + "**", "Year: **" + (str(sel_yr) if sel_yr != "All years" else "All years") + "**", "Customer group: excluding customers without transactions (in-scope only)"]
     info_box(
         "Customers with transactions since 2023, excluding BUDGET and Interco.<br>"
@@ -253,22 +314,8 @@ def render():
     # ── KPI ───────────────────────────────────────────────────────────────────
     section_header("📊 Mapping Rate")
     try:
-        kpi = run_query(f"""
-            SELECT
-                SUM(ABS(fsl.SALES_AMOUNT_GROUP))                                   AS total_amt,
-                SUM(CASE WHEN sc.CUSTOMER_GROUP_DESC IS NOT NULL
-                         AND TRIM(sc.CUSTOMER_GROUP_DESC) <> ''
-                         THEN ABS(fsl.SALES_AMOUNT_GROUP) ELSE 0 END)              AS mapped_amt,
-                COUNT(DISTINCT fsl.CUSTOMER_BILL_TO_ID)                       AS total_cust,
-                COUNT(DISTINCT CASE WHEN sc.CUSTOMER_GROUP_DESC IS NOT NULL
-                         AND TRIM(sc.CUSTOMER_GROUP_DESC) <> ''
-                         THEN fsl.CUSTOMER_BILL_TO_ID END)                    AS mapped_cust
-            FROM dev_datalake.gold.f_sales_ledger_combined_full fsl
-            LEFT JOIN dev_datalake.silver.d_sales_customer sc
-              ON fsl.CUSTOMER_BILL_TO_UID = sc.CUSTOMER_UID
-            WHERE {FSL_CUSTOMER_BASE}
-              {src_clause} {yr_clause_fsl}""")
-        kpi.columns = [c.upper() for c in kpi.columns]
+        with st.spinner("Computing mapping rate…"):
+            kpi = load_kpi(src_clause, yr_clause_fsl)
         total_amt  = float(kpi["TOTAL_AMT"].iloc[0]  or 0)
         mapped_amt = float(kpi["MAPPED_AMT"].iloc[0] or 0)
         total_cust  = int(kpi["TOTAL_CUST"].iloc[0]  or 0)
@@ -289,20 +336,8 @@ def render():
     extra_src     = src_clause
     extra_src_chg = src_clause_chg
     try:
-        by_src = run_query(f"""
-            SELECT sc.SOURCE,
-                COUNT(*) AS total,
-                COUNT(CASE WHEN sc.CUSTOMER_GROUP_DESC IS NOT NULL
-                           AND TRIM(sc.CUSTOMER_GROUP_DESC) <> '' THEN 1 END) AS mapped,
-                ROUND(COUNT(CASE WHEN sc.CUSTOMER_GROUP_DESC IS NOT NULL
-                           AND TRIM(sc.CUSTOMER_GROUP_DESC) <> '' THEN 1 END)
-                    / NULLIF(COUNT(*), 0) * 100, 1) AS pct
-            FROM dev_datalake.silver.d_sales_customer sc
-            WHERE sc.TABLE_SOURCE NOT IN ('BUDGET','HISTORICAL')
-              AND sc.INTERCO <> 'Interco Only'
-              {IN_SCOPE}
-              {src_clause}
-            GROUP BY 1 ORDER BY 4 ASC""")
+        with st.spinner("Loading mapping rate by source…"):
+            by_src = load_by_source(src_clause)
         fig = px.bar(by_src, x="SOURCE", y="PCT", color="PCT",
                      color_continuous_scale=["#d62728", "#ff7f0e", "#2ca02c"],
                      range_color=[0, 100], text="PCT",
@@ -320,21 +355,17 @@ def render():
     except Exception as e:
         st.error(str(e))
 
+    ms_clause = ms_exclusion_clause("sc.CUSTOMER_ID")
+
     # ── Unassigned customers ──────────────────────────────────────────────────
     section_header("❌ Unassigned Customers (in scope)")
     try:
-        un = run_query(f"""
-            SELECT sc.SOURCE, sc.CUSTOMER_UID, sc.CUSTOMER_ID, sc.CUSTOMER_DESC,
-                   sc.CUSTOMER_TYPE, sc.COUNTRY_UID
-            FROM dev_datalake.silver.d_sales_customer sc
-            WHERE sc.TABLE_SOURCE NOT IN ('BUDGET','HISTORICAL')
-              AND sc.INTERCO <> 'Interco Only'
-              AND (sc.CUSTOMER_GROUP_DESC IS NULL OR TRIM(sc.CUSTOMER_GROUP_DESC) = '')
-              {IN_SCOPE}
-              {extra_src}
-              {ms_exclusion_clause("sc.CUSTOMER_ID")}
-            ORDER BY sc.SOURCE, sc.CUSTOMER_DESC
-            LIMIT 500""")
+        with st.spinner("Loading unassigned customers…"):
+            un = load_unassigned(
+                extra_src, ms_clause,
+                "sc.SOURCE, sc.CUSTOMER_UID, sc.CUSTOMER_ID, sc.CUSTOMER_DESC, sc.CUSTOMER_TYPE, sc.COUNTRY_UID",
+                500,
+            )
         st.caption(f"{len(un)} unassigned in-scope customers (max 500)")
         st.dataframe(un, use_container_width=True)
     except Exception as e:
@@ -361,21 +392,15 @@ def render():
         st.error("ANTHROPIC_API_KEY environment variable not set.")
         return
     try:
-        un2 = run_query(f"""
-            SELECT sc.CUSTOMER_UID, sc.CUSTOMER_ID, sc.CUSTOMER_DESC, sc.SOURCE
-            FROM dev_datalake.silver.d_sales_customer sc
-            WHERE sc.TABLE_SOURCE NOT IN ('BUDGET','HISTORICAL')
-              AND sc.INTERCO <> 'Interco Only'
-              AND (sc.CUSTOMER_GROUP_DESC IS NULL OR TRIM(sc.CUSTOMER_GROUP_DESC) = '')
-              {IN_SCOPE}
-              {extra_src}
-              {ms_exclusion_clause("sc.CUSTOMER_ID")}
-            ORDER BY sc.SOURCE, sc.CUSTOMER_DESC
-            LIMIT 500""")
+        with st.spinner("Loading unallocated customers…"):
+            un2 = load_unassigned(
+                extra_src, ms_clause,
+                "sc.CUSTOMER_UID, sc.CUSTOMER_ID, sc.CUSTOMER_DESC, sc.SOURCE",
+                500,
+            )
         if len(un2) == 0:
             st.success("✅ No unallocated customers.")
         else:
-            # Show full info in selectbox label: source + ID + name
             un2["_label"] = un2.apply(
                 lambda r: f"[{r['SOURCE']}] {r['CUSTOMER_ID']} — {r['CUSTOMER_DESC']}", axis=1
             ) if "CUSTOMER_ID" in un2.columns else un2["CUSTOMER_DESC"]
@@ -412,17 +437,12 @@ def render():
     )
 
     try:
-        un_bulk = run_query(f"""
-            SELECT sc.CUSTOMER_UID, sc.CUSTOMER_DESC, sc.SOURCE
-            FROM dev_datalake.silver.d_sales_customer sc
-            WHERE sc.TABLE_SOURCE NOT IN ('BUDGET','HISTORICAL')
-              AND sc.INTERCO <> 'Interco Only'
-              AND (sc.CUSTOMER_GROUP_DESC IS NULL OR TRIM(sc.CUSTOMER_GROUP_DESC) = '')
-              {IN_SCOPE}
-              {extra_src}
-              {ms_exclusion_clause("sc.CUSTOMER_ID")}
-            ORDER BY sc.CUSTOMER_DESC
-            LIMIT 1000""")
+        with st.spinner("Loading unassigned customers for bulk analysis…"):
+            un_bulk = load_unassigned(
+                extra_src, ms_clause,
+                "sc.CUSTOMER_UID, sc.CUSTOMER_DESC, sc.SOURCE",
+                1000,
+            )
         total_unassigned = len(un_bulk)
     except Exception as e:
         st.error(str(e))
