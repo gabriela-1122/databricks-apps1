@@ -7,6 +7,9 @@ from db import run_query
 from customer_exceptions import ms_exclusion_clause
 from ui import gauge_chart, section_header, info_box, metric_card, mapping_rate_status
 
+st.write("Customer Group page opened")
+
+
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 # Base filter for fact table queries
