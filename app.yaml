@@ -3,13 +3,3 @@ command: [
   "run",
   "app.py"
 ]
-
-env:
-  - name: "DATABRICKS_HOST"
-    valueFrom: "dq-app-secrets/DATABRICKS_HOST"
-  - name: "HTTP_PATH"
-    valueFrom: "dq-app-secrets/HTTP_PATH"
-  - name: "DATABRICKS_TOKEN"
-    valueFrom: "dq-app-secrets/DATABRICKS_TOKEN"
-  - name: "ANTHROPIC_API_KEY"
-    valueFrom: "dq-app-secrets/ANTHROPIC_API_KEY"
