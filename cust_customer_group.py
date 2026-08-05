@@ -311,50 +311,7 @@ def render():
 
     st.markdown("---")
 
-    # ── KPI ───────────────────────────────────────────────────────────────────
-    section_header("📊 Mapping Rate")
-    try:
-        with st.spinner("Computing mapping rate…"):
-            kpi = load_kpi(src_clause, yr_clause_fsl)
-        total_amt  = float(kpi["TOTAL_AMT"].iloc[0]  or 0)
-        mapped_amt = float(kpi["MAPPED_AMT"].iloc[0] or 0)
-        total_cust  = int(kpi["TOTAL_CUST"].iloc[0]  or 0)
-        mapped_cust = int(kpi["MAPPED_CUST"].iloc[0] or 0)
-        pct = round(mapped_amt / total_amt * 100, 1) if total_amt else 0
-        c1, c2, c3 = st.columns(3)
-        with c1: st.plotly_chart(gauge_chart("Mapping Rate (€)", pct), use_container_width=True, key="cg_g")
-        with c2:
-            metric_card("Total Sales €",   f"€ {total_amt:,.0f}",  "", "neutral")
-            metric_card("Mapped €",        f"€ {mapped_amt:,.0f}", f"{pct}%", mapping_rate_status(pct))
-        with c3:
-            metric_card("Unallocated €",   f"€ {total_amt-mapped_amt:,.0f}", "", "bad" if total_amt > mapped_amt else "good")
-            metric_card("Customers total", f"{total_cust:,}", f"{mapped_cust:,} mapped", "neutral")
-    except Exception as e:
-        st.error(str(e))
-
-    section_header("📈 Mapping Rate by Source")
     extra_src     = src_clause
-    extra_src_chg = src_clause_chg
-    try:
-        with st.spinner("Loading mapping rate by source…"):
-            by_src = load_by_source(src_clause)
-        fig = px.bar(by_src, x="SOURCE", y="PCT", color="PCT",
-                     color_continuous_scale=["#d62728", "#ff7f0e", "#2ca02c"],
-                     range_color=[0, 100], text="PCT",
-                     labels={"SOURCE": "Source", "PCT": "Mapped %"},
-                     title="Customer Group Mapping % by Source (in-scope customers, txn ≥ 2023)")
-        fig.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
-        fig.update_layout(coloraxis_showscale=False, height=350)
-        clicked = st.plotly_chart(fig, use_container_width=True, on_select="rerun", key="cg_bar")
-        clicked_src = None
-        if clicked and clicked.get("selection", {}).get("points"):
-            clicked_src = clicked["selection"]["points"][0].get("x")
-            st.info(f"🔍 Filtered to source: **{clicked_src}**")
-        extra_src     = f"AND sc.SOURCE = '{clicked_src}'" if clicked_src else src_clause
-        extra_src_chg = f"AND SOURCE = '{clicked_src}'" if clicked_src else src_clause_chg
-    except Exception as e:
-        st.error(str(e))
-
     ms_clause = ms_exclusion_clause("sc.CUSTOMER_ID")
 
     # ── Unassigned customers ──────────────────────────────────────────────────

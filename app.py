@@ -26,11 +26,9 @@ inject_css()
 # Pages visible to each role
 _DQ_PAGES = [
     "🏠 Overview",
-    "👥 Customers — Market Segment",
-    "👥 Customers — Customer Groups",
-    "👥 Customers — Customer Type",
+    "👥Customer Groups AI Suggestion",
     "📦 Products — Category Mapping",
-    "📅 Change Tracking"
+    "📅 Customer Group Management"
 
 ]
 
@@ -47,25 +45,18 @@ with st.sidebar:
 # ── Page routing ──────────────────────────────────────────────────────────────
 if page == "🏠 Overview":
     print("Hello")
-    #import overview as _mod
-elif page == "👥 Customers — Market Segment":
-    #import cust_market_segment as _mod
-    print("Hello")
-elif page == "👥 Customers — Customer Groups":
+    import overview as _mod
+elif page == "👥Customer Groups AI Suggestion":
     try:
         import cust_customer_group as _mod
     except Exception as e:
         st.error(f"Customer Group page failed: {e}")
         st.exception(e)
         _mod = None
-elif page == "👥 Customers — Customer Type":
-    #import cust_customer_type as _mod
-    print("Hello")
 elif page == "📦 Products — Category Mapping":
     import prod_category_mapping as _mod
-elif page == "📅 Change Tracking":
-    print("Hello")
-    #import change_tracking as _mod
+elif page == "📅 Customer Group Management":
+    import change_tracking as _mod
 else:
     _mod = None
 
